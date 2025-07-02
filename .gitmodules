@@ -1,3 +1,0 @@
-[submodule "Plugins/HakoniwaPdu"]
-	path = HakoniwaDrone/Plugins/HakoniwaPdu
-	url = https://github.com/hakoniwalab/hakoniwa-pdu-unreal.git
