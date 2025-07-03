@@ -118,15 +118,15 @@ TArray<uint8> AHakoniwaAvatar::Read(const FString& PduName)
         UE_LOG(LogTemp, Error, TEXT("Can not get pdu size..."));
         return buffer;
     }
-    UE_LOG(LogTemp, Log, TEXT("Read PDU TEST: robot=%s, pdu=%s, size=%d"),*DroneName, *PduName, pdu_size);
+    //UE_LOG(LogTemp, Log, TEXT("Read PDU TEST: robot=%s, pdu=%s, size=%d"),*DroneName, *PduName, pdu_size);
     buffer.SetNum(pdu_size);
 
     if (pduManager->ReadPduRawData(DroneName, PduName, buffer)) {
-        UE_LOG(LogTemp, Log, TEXT("Read PDU succeeded: robot=%s, pdu=%s, size=%d"), *DroneName, *PduName, pdu_size);
+        //UE_LOG(LogTemp, Log, TEXT("Read PDU succeeded: robot=%s, pdu=%s, size=%d"), *DroneName, *PduName, pdu_size);
         return buffer;
     }
     else {
-        UE_LOG(LogTemp, Error, TEXT("Failed to read PDU: robot=%s, pdu=%s"), *DroneName, *PduName);
+        //UE_LOG(LogTemp, Error, TEXT("Failed to read PDU: robot=%s, pdu=%s"), *DroneName, *PduName);
         return TArray<uint8>();
     }
 }
