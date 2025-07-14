@@ -10,6 +10,7 @@ public class HakoniwaDrone : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[] { 
             "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput",
+            "RenderCore", "RHI", "ImageWrapper",
             "HakoniwaPdu",
             "UMG",
         });
