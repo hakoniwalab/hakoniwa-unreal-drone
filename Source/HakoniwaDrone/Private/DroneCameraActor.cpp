@@ -10,6 +10,7 @@
 #include "IImageWrapperModule.h"
 #include "IImageWrapper.h"
 #include "Modules/ModuleManager.h"
+#include "HakoniwaAvatar.h"
 
 ADroneCameraActor::ADroneCameraActor()
 {
@@ -19,11 +20,34 @@ ADroneCameraActor::ADroneCameraActor()
 void ADroneCameraActor::BeginPlay()
 {
     Super::BeginPlay();
+    Initialize();
 }
 
 void ADroneCameraActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
+    AActor* MyOwner = GetOwner();
+    if (MyOwner)
+    {
+        AHakoniwaAvatar* Avatar = Cast<AHakoniwaAvatar>(MyOwner);
+        if (Avatar != nullptr)
+        {
+            if (RobotName.IsEmpty()) {
+                RobotName = Avatar->DroneName;
+            }
+            UPduManager* PduManager = Avatar->GetPduManager();
+            if (PduManager != nullptr)
+            {
+                if (IsDeclared) {
+                    CameraMoveRequest(PduManager);
+                    CameraImageRequest(PduManager);
+                }
+                else {
+                    DeclarePdu(RobotName, PduManager);
+                }
+            }
+        }
+    }
 }
 
 // ICameraControllerInterface ÇÃä÷êîåQ

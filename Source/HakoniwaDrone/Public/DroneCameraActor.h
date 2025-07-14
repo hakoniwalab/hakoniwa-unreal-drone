@@ -58,6 +58,7 @@ private:
     FString PduCmdCameraMove;
     FString PduCameraData;
     FString PduCameraInfo;
+    bool IsDeclared = false;
 
     // バッファ用
     TArray<uint8> RawImageBytes;

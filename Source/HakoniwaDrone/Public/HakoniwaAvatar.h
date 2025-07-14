@@ -28,6 +28,7 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	UPduManager* GetPduManager() { return pduManager; }
 private:
 	UPduManager* pduManager = nullptr;
 	bool isDeclared = false;
