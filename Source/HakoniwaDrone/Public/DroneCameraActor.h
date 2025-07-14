@@ -34,15 +34,16 @@ public:
     virtual void CameraImageRequest(UPduManager* PduManager) override;
     virtual void CameraMoveRequest(UPduManager* PduManager) override;
 
-protected:
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hakoniwa", meta = (AllowPrivateAccess = "true"))
     USceneCaptureComponent2D* SceneCapture;
-
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hakoniwa")
+    FString RobotName = "Drone";
+protected:
     UPROPERTY()
     UTextureRenderTarget2D* RenderTarget;
 
 private:
-    FString RobotName;
+    UPduManager* PduManager_;
     float ManualRotationDeg;
     int32 CurrentId;
     int32 RequestId;

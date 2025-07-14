@@ -11,6 +11,8 @@
 #include "IImageWrapper.h"
 #include "Modules/ModuleManager.h"
 #include "HakoniwaAvatar.h"
+#include "HakoniwaWebClient.h"
+#include <Kismet/GameplayStatics.h>
 
 ADroneCameraActor::ADroneCameraActor()
 {
@@ -20,33 +22,60 @@ ADroneCameraActor::ADroneCameraActor()
 void ADroneCameraActor::BeginPlay()
 {
     Super::BeginPlay();
-    Initialize();
+    IsDeclared = false;
+
+    // BeginPlayでBlueprintコンポーネントを検索
+    // まず、親アクターを取得します
+    AActor* ParentActor = GetParentActor();
+
+    if (ParentActor)
+    {
+        // 親アクターが持つコンポーネントの中からSceneCaptureComponent2Dを探します
+        SceneCapture = ParentActor->FindComponentByClass<USceneCaptureComponent2D>();
+    }
+
+    if (SceneCapture)
+    {
+        UE_LOG(LogTemp, Log, TEXT("Found SceneCaptureComponent2D on the Parent Actor!"));
+        Initialize();
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Could not find SceneCaptureComponent2D on the Parent Actor."));
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("DroneCameraActor's BeginPlay has finished."));
 }
 
 void ADroneCameraActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    AActor* MyOwner = GetOwner();
-    if (MyOwner)
-    {
-        AHakoniwaAvatar* Avatar = Cast<AHakoniwaAvatar>(MyOwner);
-        if (Avatar != nullptr)
+    UE_LOG(LogTemp, Log, TEXT("Tick2 start RobotName = %s"), *RobotName);
+    if (PduManager_ == nullptr) {
+        if (const auto* GameInstance = GetGameInstance())
         {
-            if (RobotName.IsEmpty()) {
-                RobotName = Avatar->DroneName;
-            }
-            UPduManager* PduManager = Avatar->GetPduManager();
-            if (PduManager != nullptr)
+            AHakoniwaWebClient* WebClient = Cast<AHakoniwaWebClient>(UGameplayStatics::GetActorOfClass(GetWorld(), AHakoniwaWebClient::StaticClass()));
+            if (WebClient != nullptr)
             {
-                if (IsDeclared) {
-                    CameraMoveRequest(PduManager);
-                    CameraImageRequest(PduManager);
-                }
-                else {
-                    DeclarePdu(RobotName, PduManager);
-                }
+                PduManager_ = WebClient->GetPduManager();
             }
         }
+    }
+    if (PduManager_ != nullptr)
+    {
+        if (IsDeclared) {
+            UE_LOG(LogTemp, Log, TEXT("Tick DroneCameraActor start pdu actions"));
+            CameraMoveRequest(PduManager_);
+            CameraImageRequest(PduManager_);
+        }
+        else {
+            UE_LOG(LogTemp, Log, TEXT("Tick DroneCameraActor start Declare"));
+            DeclarePdu(RobotName, PduManager_);
+            IsDeclared = true;
+        }
+    }
+    else {
+        UE_LOG(LogTemp, Error, TEXT("DroneCameraActor can not find pduManager."));
     }
 }
 
@@ -57,12 +86,8 @@ void ADroneCameraActor::Initialize()
     // SceneCapture を探す（エディタ配置 or 手動生成）
     if (!SceneCapture)
     {
-        SceneCapture = FindComponentByClass<USceneCaptureComponent2D>();
-        if (!SceneCapture)
-        {
-            UE_LOG(LogTemp, Error, TEXT("SceneCaptureComponent2D not found"));
-            return;
-        }
+        UE_LOG(LogTemp, Error, TEXT("SceneCaptureComponent2D not found"));
+        return;
     }
 
     // RenderTarget を生成
@@ -243,18 +268,20 @@ void ADroneCameraActor::Scan()
 
     // 上下反転 & RGB 抽出
     RawImageBytes.Reset();
-    RawImageBytes.AddUninitialized(Width * Height * 3);
+    RawImageBytes.AddUninitialized(Width * Height * 4);
+
 
     for (int32 y = 0; y < Height; y++)
     {
         for (int32 x = 0; x < Width; x++)
         {
             int32 SrcIndex = (Height - 1 - y) * Width + x;
-            int32 DstIndex = (y * Width + x) * 3;
+            int32 DstIndex = (y * Width + x) * 4;
             const FColor& Color = PixelData[SrcIndex];
             RawImageBytes[DstIndex + 0] = Color.R;
             RawImageBytes[DstIndex + 1] = Color.G;
             RawImageBytes[DstIndex + 2] = Color.B;
+            RawImageBytes[DstIndex + 3] = 255;
         }
     }
 
@@ -265,7 +292,7 @@ void ADroneCameraActor::Scan()
     TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(ImageFormat);
 
     if (ImageWrapper.IsValid() &&
-        ImageWrapper->SetRaw(RawImageBytes.GetData(), RawImageBytes.Num(), Width, Height, ERGBFormat::BGRA, 8))
+        ImageWrapper->SetRaw(RawImageBytes.GetData(), RawImageBytes.Num(), Width, Height, ERGBFormat::RGBA, 8))
     {
         CompressedImageBytes = ImageWrapper->GetCompressed();
         UE_LOG(LogTemp, Log, TEXT("Scan: Image encoded. Size = %d bytes"), CompressedImageBytes.Num());
@@ -320,6 +347,7 @@ void ADroneCameraActor::CameraImageRequest(UPduManager* PduManager)
             CurrentId = RequestId;
             UE_LOG(LogTemp, Log, TEXT("CameraImageRequest: New request received. id=%d"), RequestId);
             Scan();  // カメラ画像送信処理を呼ぶ
+            WriteCameraDataPdu(PduManager);
         }
     }
 }
