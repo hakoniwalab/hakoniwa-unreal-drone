@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "HakoniwaDrone/DronePropellerComponent.h"
+#include "DronePropellerComponent.h"
 #include "PduManager.h"
 
 #include "HakoniwaAvatar.generated.h"
