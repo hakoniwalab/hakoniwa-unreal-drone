@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "DroneCameraActor.h"
+#include "DroneCameraComponent.h"
 #include "hako_msgs/pdu_cpptype_conv_HakoCameraInfo.hpp" 
 #include "hako_msgs/pdu_cpptype_conv_HakoCameraData.hpp" 
 #include "hako_msgs/pdu_cpptype_conv_HakoCmdCameraMove.hpp" 
@@ -9,53 +9,45 @@
 #include "pdu_convertor.hpp"
 #include "IImageWrapperModule.h"
 #include "IImageWrapper.h"
-#include "Modules/ModuleManager.h"
-#include "HakoniwaAvatar.h"
 #include "HakoniwaWebClient.h"
+
 #include <Kismet/GameplayStatics.h>
 
-ADroneCameraActor::ADroneCameraActor()
+
+// Sets default values for this component's properties
+UDroneCameraComponent::UDroneCameraComponent()
 {
-    PrimaryActorTick.bCanEverTick = true;
+	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
+	// off to improve performance if you don't need them.
+	PrimaryComponentTick.bCanEverTick = true;
+
+    // 自分自身の子コンポーネントとして SceneCaptureComponent2D を生成
+    SceneCapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCapture"));
+
+    // このコンポーネントのルートにアタッチ（親子関係を設定）
+    SceneCapture->SetupAttachment(this);
 }
 
-void ADroneCameraActor::BeginPlay()
+
+// Called when the game starts
+void UDroneCameraComponent::BeginPlay()
 {
-    Super::BeginPlay();
-    IsDeclared = false;
+	Super::BeginPlay();
 
-    // BeginPlayでBlueprintコンポーネントを検索
-    // まず、親アクターを取得します
-    AActor* ParentActor = GetParentActor();
-
-    if (ParentActor)
-    {
-        // 親アクターが持つコンポーネントの中からSceneCaptureComponent2Dを探します
-        SceneCapture = ParentActor->FindComponentByClass<USceneCaptureComponent2D>();
-    }
-
-    if (SceneCapture)
-    {
-        UE_LOG(LogTemp, Log, TEXT("Found SceneCaptureComponent2D on the Parent Actor!"));
-        Initialize();
-    }
-    else
-    {
-        UE_LOG(LogTemp, Error, TEXT("Could not find SceneCaptureComponent2D on the Parent Actor."));
-    }
-
-    UE_LOG(LogTemp, Log, TEXT("DroneCameraActor's BeginPlay has finished."));
+    Initialize();
 }
 
-void ADroneCameraActor::Tick(float DeltaTime)
+
+// Called every frame
+void UDroneCameraComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-    Super::Tick(DeltaTime);
-    UE_LOG(LogTemp, Log, TEXT("Tick2 start RobotName = %s"), *RobotName);
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
     if (PduManager_ == nullptr) {
-        if (const auto* GameInstance = GetGameInstance())
+        if (GetOwner())
         {
-            AHakoniwaWebClient* WebClient = Cast<AHakoniwaWebClient>(UGameplayStatics::GetActorOfClass(GetWorld(), AHakoniwaWebClient::StaticClass()));
-            if (WebClient != nullptr)
+            AHakoniwaWebClient* WebClient = Cast<AHakoniwaWebClient>(UGameplayStatics::GetActorOfClass(GetOwner()->GetWorld(), AHakoniwaWebClient::StaticClass()));
+            if (WebClient)
             {
                 PduManager_ = WebClient->GetPduManager();
             }
@@ -64,11 +56,11 @@ void ADroneCameraActor::Tick(float DeltaTime)
     if (PduManager_ != nullptr)
     {
         if (IsDeclared) {
-            UE_LOG(LogTemp, Log, TEXT("Tick DroneCameraActor start pdu actions"));
+            //UE_LOG(LogTemp, Log, TEXT("Tick DroneCameraActor start pdu actions"));
             CameraMoveRequest(PduManager_);
             CameraImageRequest(PduManager_);
         }
-        else {
+        else if (PduManager_->IsServiceEnabled()) {
             UE_LOG(LogTemp, Log, TEXT("Tick DroneCameraActor start Declare"));
             DeclarePdu(RobotName, PduManager_);
             IsDeclared = true;
@@ -77,19 +69,12 @@ void ADroneCameraActor::Tick(float DeltaTime)
     else {
         UE_LOG(LogTemp, Error, TEXT("DroneCameraActor can not find pduManager."));
     }
+
 }
 
-// ICameraControllerInterface の関数群
 
-void ADroneCameraActor::Initialize()
+void UDroneCameraComponent::Initialize()
 {
-    // SceneCapture を探す（エディタ配置 or 手動生成）
-    if (!SceneCapture)
-    {
-        UE_LOG(LogTemp, Error, TEXT("SceneCaptureComponent2D not found"));
-        return;
-    }
-
     // RenderTarget を生成
     RenderTarget = NewObject<UTextureRenderTarget2D>(this);
     RenderTarget->InitAutoFormat(640, 480);
@@ -116,7 +101,8 @@ void ADroneCameraActor::Initialize()
     UE_LOG(LogTemp, Log, TEXT("DroneCameraActor::Initialize completed"));
 }
 
-void ADroneCameraActor::UpdateCameraAngle()
+
+void UDroneCameraComponent::UpdateCameraAngle()
 {
     if (!SceneCapture) return;
 
@@ -125,8 +111,7 @@ void ADroneCameraActor::UpdateCameraAngle()
     NewRotation.Pitch = ManualRotationDeg;
     SceneCapture->SetRelativeRotation(NewRotation);
 }
-
-bool ADroneCameraActor::DeclarePdu(const FString& InRobotName, UPduManager* PduManager)
+bool UDroneCameraComponent::DeclarePdu(const FString& InRobotName, UPduManager* PduManager)
 {
     if (!PduManager)
     {
@@ -135,31 +120,50 @@ bool ADroneCameraActor::DeclarePdu(const FString& InRobotName, UPduManager* PduM
     }
 
     RobotName = InRobotName;
+    bool bAllSucceeded = true;
 
-
-    bool Result = true;
-    Result &= PduManager->DeclarePduForRead(RobotName, PduCmdCamera);
-    Result &= PduManager->DeclarePduForRead(RobotName, PduCmdCameraMove);
-    Result &= PduManager->DeclarePduForWrite(RobotName, PduCameraData);
-    Result &= PduManager->DeclarePduForWrite(RobotName, PduCameraInfo);
-
-    if (Result)
+    // Read PDU 1
+    if (!PduManager->DeclarePduForRead(RobotName, PduCmdCamera))
     {
-        UE_LOG(LogTemp, Log, TEXT("DeclarePdu: All declarations succeeded"));
+        UE_LOG(LogTemp, Error, TEXT("DeclarePdu: FAILED to declare %s"), *PduCmdCamera);
+        bAllSucceeded = false;
     }
-    else
+
+    // Read PDU 2
+    if (!PduManager->DeclarePduForRead(RobotName, PduCmdCameraMove))
     {
-        UE_LOG(LogTemp, Error, TEXT("DeclarePdu: One or more PDU declarations failed"));
+        UE_LOG(LogTemp, Error, TEXT("DeclarePdu: FAILED to declare %s"), *PduCmdCameraMove);
+        bAllSucceeded = false;
     }
-    return Result;
+
+    // Write PDU 1
+    if (!PduManager->DeclarePduForWrite(RobotName, PduCameraData))
+    {
+        UE_LOG(LogTemp, Error, TEXT("DeclarePdu: FAILED to declare %s"), *PduCameraData);
+        bAllSucceeded = false;
+    }
+
+    // Write PDU 2
+    if (!PduManager->DeclarePduForWrite(RobotName, PduCameraInfo))
+    {
+        UE_LOG(LogTemp, Error, TEXT("DeclarePdu: FAILED to declare %s"), *PduCameraInfo);
+        bAllSucceeded = false;
+    }
+
+    if (bAllSucceeded)
+    {
+        UE_LOG(LogTemp, Log, TEXT("DeclarePdu: All declarations succeeded for %s"), *RobotName);
+    }
+
+    return bAllSucceeded;
 }
 
-void ADroneCameraActor::RotateCamera(float Step)
+void UDroneCameraComponent::RotateCamera(float Step)
 {
     SetCameraAngle(ManualRotationDeg + Step);
 }
 
-void ADroneCameraActor::WriteCameraInfo(int32 InMoveCurrentId, UPduManager* PduManager)
+void UDroneCameraComponent::WriteCameraInfo(int32 InMoveCurrentId, UPduManager* PduManager)
 {
     if (!PduManager || PduCameraInfo.IsEmpty())
     {
@@ -198,7 +202,7 @@ void ADroneCameraActor::WriteCameraInfo(int32 InMoveCurrentId, UPduManager* PduM
         UE_LOG(LogTemp, Log, TEXT("WriteCameraInfo: Sent camera info. yaw=%.2f"), ManualRotationDeg);
     }
 }
-void ADroneCameraActor::WriteCameraDataPdu(UPduManager* PduManager)
+void UDroneCameraComponent::WriteCameraDataPdu(UPduManager* PduManager)
 {
     if (!PduManager || PduCameraData.IsEmpty()) {
         UE_LOG(LogTemp, Error, TEXT("WriteCameraDataPdu: Invalid state"));
@@ -243,7 +247,7 @@ void ADroneCameraActor::WriteCameraDataPdu(UPduManager* PduManager)
 
 
 
-void ADroneCameraActor::Scan()
+void UDroneCameraComponent::Scan()
 {
     if (!RenderTarget || !SceneCapture)
     {
@@ -305,7 +309,7 @@ void ADroneCameraActor::Scan()
 }
 
 
-void ADroneCameraActor::SetCameraAngle(float Angle)
+void UDroneCameraComponent::SetCameraAngle(float Angle)
 {
     float NewPitch = Angle;
 
@@ -313,12 +317,12 @@ void ADroneCameraActor::SetCameraAngle(float Angle)
     ManualRotationDeg = FMath::Clamp(NewPitch, CameraMoveUpDeg, CameraMoveDownDeg);
 }
 
-void ADroneCameraActor::UpdateCameraImageTexture()
+void UDroneCameraComponent::UpdateCameraImageTexture()
 {
     //TODO
 }
 
-void ADroneCameraActor::CameraImageRequest(UPduManager* PduManager)
+void UDroneCameraComponent::CameraImageRequest(UPduManager* PduManager)
 {
     if (!PduManager || PduCmdCamera.IsEmpty()) {
         UE_LOG(LogTemp, Error, TEXT("CameraImageRequest: Invalid state"));
@@ -327,14 +331,16 @@ void ADroneCameraActor::CameraImageRequest(UPduManager* PduManager)
 
     int32 PduSize = PduManager->GetPduSize(RobotName, PduCmdCamera);
     if (PduSize <= 0) {
-        UE_LOG(LogTemp, Error, TEXT("CameraImageRequest: Failed to get PDU size"));
+        //UE_LOG(LogTemp, Error, TEXT("CameraImageRequest: Failed to get PDU size"));
+        //data is not arrived
         return;
     }
 
     TArray<uint8> Buffer;
     Buffer.SetNum(PduSize);
     if (!PduManager->ReadPduRawData(RobotName, PduCmdCamera, Buffer)) {
-        UE_LOG(LogTemp, Error, TEXT("CameraImageRequest: Failed to read PDU"));
+        //UE_LOG(LogTemp, Error, TEXT("CameraImageRequest: Failed to read PDU"));
+        //data is not arrived.
         return;
     }
 
@@ -353,7 +359,7 @@ void ADroneCameraActor::CameraImageRequest(UPduManager* PduManager)
     }
 }
 
-void ADroneCameraActor::CameraMoveRequest(UPduManager* PduManager)
+void UDroneCameraComponent::CameraMoveRequest(UPduManager* PduManager)
 {
     if (!PduManager || PduCmdCameraMove.IsEmpty()) {
         UE_LOG(LogTemp, Error, TEXT("CameraMoveRequest: Invalid state"));
@@ -369,7 +375,8 @@ void ADroneCameraActor::CameraMoveRequest(UPduManager* PduManager)
     TArray<uint8> Buffer;
     Buffer.SetNum(PduSize);
     if (!PduManager->ReadPduRawData(RobotName, PduCmdCameraMove, Buffer)) {
-        UE_LOG(LogTemp, Error, TEXT("CameraMoveRequest: Failed to read PDU"));
+        //UE_LOG(LogTemp, Error, TEXT("CameraMoveRequest: Failed to read PDU"));
+        //data is not arrived
         return;
     }
 
@@ -389,4 +396,3 @@ void ADroneCameraActor::CameraMoveRequest(UPduManager* PduManager)
         }
     }
 }
-

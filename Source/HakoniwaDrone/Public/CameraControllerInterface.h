@@ -21,7 +21,7 @@ class HAKONIWADRONE_API ICameraControllerInterface
 public:
     virtual void Initialize() = 0;
     virtual void UpdateCameraAngle() = 0;
-    virtual void DeclarePdu(const FString& RobotName, UPduManager* PduManager) = 0;
+    virtual bool DeclarePdu(const FString& RobotName, UPduManager* PduManager) = 0;
     virtual void RotateCamera(float Step) = 0;
     virtual void WriteCameraInfo(int32 MoveCurrentId, UPduManager* PduManager) = 0;
     virtual void WriteCameraDataPdu(UPduManager* PduManager) = 0;

@@ -1,25 +1,36 @@
-// DroneCameraActor.h
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "Components/SceneComponent.h"
+
 #include "CameraControllerInterface.h"
 #include "PduManager.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Components/SceneCaptureComponent2D.h"
-#include "DroneCameraActor.generated.h"
 
-UCLASS()
-class HAKONIWADRONE_API ADroneCameraActor : public AActor, public ICameraControllerInterface
+
+#include "DroneCameraComponent.generated.h"
+
+
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+class HAKONIWADRONE_API UDroneCameraComponent : public USceneComponent, public ICameraControllerInterface
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
-public:
-    ADroneCameraActor();
+public:	
+	// Sets default values for this component's properties
+	UDroneCameraComponent();
 
-    virtual void Tick(float DeltaTime) override;
-    virtual void BeginPlay() override;
+protected:
+	// Called when the game starts
+	virtual void BeginPlay() override;
+
+public:	
+	// Called every frame
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
 
     // ICameraControllerInterface 実装
     virtual void Initialize() override;
@@ -34,16 +45,23 @@ public:
     virtual void CameraImageRequest(UPduManager* PduManager) override;
     virtual void CameraMoveRequest(UPduManager* PduManager) override;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hakoniwa", meta = (AllowPrivateAccess = "true"))
+private:
+    // UPROPERTYを追加し、エディタで設定可能にする
+    UPROPERTY(EditAnywhere, Category = "Hakoniwa")
+    FString RobotName = "Drone"; // デフォルト値も設定可能
+
+    // UPROPERTYを追加し、GCから保護し、エディタで確認できるようにする
+    UPROPERTY(VisibleAnywhere, Category = "Camera")
     USceneCaptureComponent2D* SceneCapture;
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hakoniwa")
-    FString RobotName = "Drone";
-protected:
+
+    // UPROPERTYを追加してGCから保護する
     UPROPERTY()
     UTextureRenderTarget2D* RenderTarget;
 
-private:
+    // UPROPERTYを追加してGCから保護する
+    UPROPERTY()
     UPduManager* PduManager_;
+
     float ManualRotationDeg;
     int32 CurrentId;
     int32 RequestId;
@@ -67,5 +85,4 @@ private:
 
     // エンコード選択（0 = PNG, 1 = JPEG）
     int32 EncodeType = 0;
-
 };
