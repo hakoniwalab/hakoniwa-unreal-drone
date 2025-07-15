@@ -10,6 +10,8 @@
 #include "IImageWrapperModule.h"
 #include "IImageWrapper.h"
 #include "HakoniwaWebClient.h"
+#include "Misc/FileHelper.h"
+#include "HAL/PlatformFileManager.h"
 
 #include <Kismet/GameplayStatics.h>
 
@@ -280,18 +282,14 @@ void UDroneCameraComponent::Scan()
     RawImageBytes.AddUninitialized(Width * Height * 4);
 
 
-    for (int32 y = 0; y < Height; y++)
+    for (int32 i = 0; i < PixelData.Num(); ++i)
     {
-        for (int32 x = 0; x < Width; x++)
-        {
-            int32 SrcIndex = (Height - 1 - y) * Width + x;
-            int32 DstIndex = (y * Width + x) * 4;
-            const FColor& Color = PixelData[SrcIndex];
-            RawImageBytes[DstIndex + 0] = Color.R;
-            RawImageBytes[DstIndex + 1] = Color.G;
-            RawImageBytes[DstIndex + 2] = Color.B;
-            RawImageBytes[DstIndex + 3] = 255;
-        }
+        int32 DstIndex = i * 4;
+        const FColor& Color = PixelData[i];
+        RawImageBytes[DstIndex + 0] = Color.R;
+        RawImageBytes[DstIndex + 1] = Color.G;
+        RawImageBytes[DstIndex + 2] = Color.B;
+        RawImageBytes[DstIndex + 3] = 255;
     }
 
     // ImageWrapper を使ってエンコード
@@ -305,6 +303,22 @@ void UDroneCameraComponent::Scan()
     {
         CompressedImageBytes = ImageWrapper->GetCompressed();
         UE_LOG(LogTemp, Log, TEXT("Scan: Image encoded. Size = %d bytes"), CompressedImageBytes.Num());
+
+
+#if 0 // for test
+        FString FileName = (EncodeType == 0) ? TEXT("DebugCapture.png") : TEXT("DebugCapture.jpg");
+        FString FilePath = FPaths::ProjectSavedDir() + "/" + FileName;
+
+        if (FFileHelper::SaveArrayToFile(CompressedImageBytes, *FilePath))
+        {
+            UE_LOG(LogTemp, Log, TEXT("Debug image successfully saved to: %s"), *FilePath);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to save debug image to: %s"), *FilePath);
+        }
+#endif
+
     }
     else
     {
