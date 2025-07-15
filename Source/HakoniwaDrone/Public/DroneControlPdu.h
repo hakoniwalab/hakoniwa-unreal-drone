@@ -67,7 +67,9 @@ protected:
 private:
 	// PDUマネージャーへのポインタ
 	UPROPERTY()
-	UPduManager* PduManager;
+	UPduManager* PduManager_;
+
+	bool IsDeclared = false;
 
 	// ボタンと軸の状態を保持する配列
 	HakoCpp_GameControllerOperation CurrStates;
@@ -86,6 +88,7 @@ public:
 	// インタフェースで定義した各関数の実体を定義します。
 	// BlueprintNativeEventなので、関数名の末尾に「_Implementation」をつけます。
 	virtual void DoInitialize_Implementation(const FString& InRobotName) override;
+	virtual bool IsReady_Implementation() override;
 	virtual void Run_Implementation() override;
 	virtual void Flush_Implementation() override;
 	virtual FVector2D GetLeftStickInput_Implementation() override;

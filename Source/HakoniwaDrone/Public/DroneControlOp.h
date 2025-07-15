@@ -24,6 +24,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Drone Control")
 	void Run();
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Drone Control")
+	bool IsReady();
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Drone Control")
 	void Flush();
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Drone Input")
 	FVector2D GetLeftStickInput();

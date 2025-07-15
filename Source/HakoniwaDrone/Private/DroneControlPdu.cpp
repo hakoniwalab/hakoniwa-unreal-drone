@@ -5,6 +5,8 @@
 #include "hako_msgs/pdu_cpptype_conv_HakoCmdMagnetHolder.hpp" 
 #include "hako_msgs/pdu_cpptype_conv_HakoStatusMagnetHolder.hpp"
 #include "pdu_convertor.hpp"
+#include <HakoniwaWebClient.h>
+#include <Kismet/GameplayStatics.h>
 
 // Sets default values for this component's properties
 UDroneControlPdu::UDroneControlPdu()
@@ -32,7 +34,24 @@ void UDroneControlPdu::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// ...
+	if (PduManager_ == nullptr) {
+		if (GetOwner())
+		{
+			AHakoniwaWebClient* WebClient = Cast<AHakoniwaWebClient>(UGameplayStatics::GetActorOfClass(GetOwner()->GetWorld(), AHakoniwaWebClient::StaticClass()));
+			if (WebClient)
+			{
+				PduManager_ = WebClient->GetPduManager();
+			}
+		}
+	}
+	if (PduManager_ != nullptr) {
+		if (IsDeclared) {
+			DeclarePdu();
+		}
+		else {
+			Run();
+		}
+	}
 }
 
 void UDroneControlPdu::InitializeComponent()
@@ -47,34 +66,38 @@ void UDroneControlPdu::InitializeComponent()
 
 void UDroneControlPdu::DeclarePdu()
 {
-	if (!PduManager)
+	if (!PduManager_)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UDroneControlPdu: Can not get Pdu Manager"));
 		return;
 	}
 
-	bool bResult = PduManager->DeclarePduForWrite(RobotName, PduName);
+	bool bResult = PduManager_->DeclarePduForWrite(RobotName, PduName);
 	UE_LOG(LogTemp, Log, TEXT("Declare PDU %s: %s"), *PduName, bResult ? TEXT("Success") : TEXT("Failed"));
 
 #if 0 //not supported yet
 	if (bUseMagnet)
 	{
-		bResult = PduManager->DeclarePduForRead(RobotName, PduNameCmdMagnet);
+		bResult = PduManager_->DeclarePduForRead(RobotName, PduNameCmdMagnet);
 		if (!bResult)
 		{
 			UE_LOG(LogTemp, Error, TEXT("Can not declare pdu for read: %s %s"), *RobotName, *PduNameCmdMagnet);
 		}
 
-		bResult = PduManager->DeclarePduForWrite(RobotName, PduNameStatusMagnet);
+		bResult = PduManager_->DeclarePduForWrite(RobotName, PduNameStatusMagnet);
 		if (!bResult)
 		{
 			UE_LOG(LogTemp, Error, TEXT("Can not declare pdu for write: %s %s"), *RobotName, *PduNameStatusMagnet);
 		}
 	}
 #endif
+	IsDeclared = bResult;
 }
 
-
+bool UDroneControlPdu::IsReady_Implementation()
+{
+	return IsDeclared;
+}
 // --- インタフェース関数の実装 ---
 
 void UDroneControlPdu::DoInitialize_Implementation(const FString& InRobotName)
@@ -83,11 +106,11 @@ void UDroneControlPdu::DoInitialize_Implementation(const FString& InRobotName)
 }
 void UDroneControlPdu::Run_Implementation()
 {
-	if (!PduManager) {
+	if (!PduManager_) {
 		return;
 	}
 	//read gamectrl
-	int32 PduSize = PduManager->GetPduSize(RobotName, PduName);
+	int32 PduSize = PduManager_->GetPduSize(RobotName, PduName);
 	if (PduSize <= 0)
 	{
 		UE_LOG(LogTemp, Error, TEXT("WriteCameraInfo: Failed to get PDU size for %s:%s"), *RobotName, *PduName);
@@ -95,7 +118,7 @@ void UDroneControlPdu::Run_Implementation()
 	}
 	TArray<uint8> Buffer;
 	Buffer.SetNum(PduSize);
-	if (PduManager->ReadPduRawData(RobotName, PduName, Buffer)) {
+	if (PduManager_->ReadPduRawData(RobotName, PduName, Buffer)) {
 		PrevStates = CurrStates;
 		hako::pdu::PduConvertor<HakoCpp_GameControllerOperation, hako::pdu::msgs::hako_msgs::GameControllerOperation> Conv;
 		Conv.pdu2cpp((char*)Buffer.GetData(), CurrStates);
@@ -104,7 +127,7 @@ void UDroneControlPdu::Run_Implementation()
 
 void UDroneControlPdu::Flush_Implementation()
 {
-	if (!PduManager) {
+	if (!PduManager_) {
 		return;
 	}
 #if 0 //not supported yet
@@ -113,7 +136,7 @@ void UDroneControlPdu::Flush_Implementation()
 	 */
 	if (bUseMagnet)
 	{
-		int32 PduSize = PduManager->GetPduSize(RobotName, PduNameStatusMagnet);
+		int32 PduSize = PduManager_->GetPduSize(RobotName, PduNameStatusMagnet);
 		if (PduSize <= 0)
 		{
 			UE_LOG(LogTemp, Error, TEXT("WriteCameraInfo: Failed to get PDU size for %s:%s"), *RobotName, *PduNameStatusMagnet);
@@ -128,7 +151,7 @@ void UDroneControlPdu::Flush_Implementation()
 		status_magnet.contact_on = bStatusMagnet_ContactOn;
 		hako::pdu::PduConvertor<HakoCpp_HakoStatusMagnetHolder, hako::pdu::msgs::hako_msgs::HakoStatusMagnetHolder> Conv;
 		Conv.cpp2pdu(status_magnet, (char*)Buffer.GetData(), Buffer.Num());
-		PduManager->FlushPduRawData(RobotName, PduNameStatusMagnet, Buffer);
+		PduManager_->FlushPduRawData(RobotName, PduNameStatusMagnet, Buffer);
 	}
 	UE_LOG(LogTemp, Log, TEXT("DoFlush Called. PDU writing logic should be implemented here."));
 #endif

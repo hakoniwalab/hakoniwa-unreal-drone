@@ -23,6 +23,7 @@ public:
 
     // ICameraControllerInterface ŽÀ‘•
     virtual void Initialize() override;
+    virtual bool IsReady() override;
     virtual void UpdateCameraAngle() override;
     virtual bool DeclarePdu(const FString& RobotName, UPduManager* PduManager) override;
     virtual void RotateCamera(float Step) override;

@@ -157,7 +157,10 @@ bool UDroneCameraComponent::DeclarePdu(const FString& InRobotName, UPduManager* 
 
     return bAllSucceeded;
 }
-
+bool UDroneCameraComponent::IsReady()
+{
+    return IsDeclared;
+}
 void UDroneCameraComponent::RotateCamera(float Step)
 {
     SetCameraAngle(ManualRotationDeg + Step);

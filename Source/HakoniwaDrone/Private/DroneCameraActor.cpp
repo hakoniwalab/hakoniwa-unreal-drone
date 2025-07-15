@@ -46,7 +46,10 @@ void ADroneCameraActor::BeginPlay()
 
     UE_LOG(LogTemp, Log, TEXT("DroneCameraActor's BeginPlay has finished."));
 }
-
+bool ADroneCameraActor::IsReady()
+{
+    return false;
+}
 void ADroneCameraActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);

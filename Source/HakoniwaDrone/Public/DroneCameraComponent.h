@@ -36,6 +36,7 @@ public:
     virtual void Initialize() override;
     virtual void UpdateCameraAngle() override;
     virtual bool DeclarePdu(const FString& RobotName, UPduManager* PduManager) override;
+    virtual bool IsReady() override;
     virtual void RotateCamera(float Step) override;
     virtual void WriteCameraInfo(int32 MoveCurrentId, UPduManager* PduManager) override;
     virtual void WriteCameraDataPdu(UPduManager* PduManager) override;
