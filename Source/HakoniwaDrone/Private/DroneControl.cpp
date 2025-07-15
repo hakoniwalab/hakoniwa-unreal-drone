@@ -34,7 +34,8 @@ void UDroneControl::BeginPlay()
         UE_LOG(LogTemp, Warning, TEXT("DroneControl: IDroneControlOp component not found!"));
     }
     else {
-        ControlOp->DoInitialize(RobotName);
+        //ControlOp->DoInitialize(RobotName);
+        IDroneControlOp::Execute_DoInitialize(ControlOp.GetObject(), RobotName);
     }
 
     // --- CameraControllerInterfaceを実装したコンポーネントを取得 ---
@@ -63,7 +64,7 @@ void UDroneControl::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
         }
     }
     if (PduManager_ != nullptr) {
-        if (!ControlOp->IsReady()) {
+        if (!IDroneControlOp::Execute_IsReady(ControlOp.GetObject())) {
             return;
         }
         if (CameraController->IsReady()) {
@@ -74,16 +75,16 @@ void UDroneControl::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 
 void UDroneControl::HandleCameraControl(float DeltaTime)
 {
-    if (ControlOp->IsYButtonPressed()) {
+    if (IDroneControlOp::Execute_IsYButtonPressed(ControlOp.GetObject())) {
         UE_LOG(LogTemp, Log, TEXT("SHOT!!"));
         CameraController->Scan();
         CameraController->WriteCameraDataPdu(PduManager_);
     }
-    if (ControlOp->IsUpButtonPressed())
+    if (IDroneControlOp::Execute_IsUpButtonPressed(ControlOp.GetObject()))
     {
         is_pressed_up = true;
     }
-    else if (ControlOp->IsUpButtonReleased())
+    else if (IDroneControlOp::Execute_IsUpButtonReleased(ControlOp.GetObject()))
     {
         is_pressed_up = false;
     }
@@ -100,11 +101,11 @@ void UDroneControl::HandleCameraControl(float DeltaTime)
         }
 
     }
-    if (ControlOp->IsDownButtonPressed())
+    if (IDroneControlOp::Execute_IsDownButtonPressed(ControlOp.GetObject()))
     {
         is_pressed_down = true;
     }
-    else if (ControlOp->IsDownButtonReleased())
+    else if (IDroneControlOp::Execute_IsDownButtonReleased(ControlOp.GetObject()))
     {
         is_pressed_down = false;
     }

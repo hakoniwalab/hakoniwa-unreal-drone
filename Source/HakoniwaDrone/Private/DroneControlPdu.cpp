@@ -33,7 +33,6 @@ void UDroneControlPdu::BeginPlay()
 void UDroneControlPdu::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
 	if (PduManager_ == nullptr) {
 		if (GetOwner())
 		{
@@ -45,11 +44,11 @@ void UDroneControlPdu::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		}
 	}
 	if (PduManager_ != nullptr) {
-		if (IsDeclared) {
+		if (!IsDeclared) {
 			DeclarePdu();
 		}
 		else {
-			Run();
+			IDroneControlOp::Execute_Run(this);
 		}
 	}
 }
@@ -72,7 +71,7 @@ void UDroneControlPdu::DeclarePdu()
 		return;
 	}
 
-	bool bResult = PduManager_->DeclarePduForWrite(RobotName, PduName);
+	bool bResult = PduManager_->DeclarePduForRead(RobotName, PduName);
 	UE_LOG(LogTemp, Log, TEXT("Declare PDU %s: %s"), *PduName, bResult ? TEXT("Success") : TEXT("Failed"));
 
 #if 0 //not supported yet
@@ -106,9 +105,6 @@ void UDroneControlPdu::DoInitialize_Implementation(const FString& InRobotName)
 }
 void UDroneControlPdu::Run_Implementation()
 {
-	if (!PduManager_) {
-		return;
-	}
 	//read gamectrl
 	int32 PduSize = PduManager_->GetPduSize(RobotName, PduName);
 	if (PduSize <= 0)
@@ -122,6 +118,7 @@ void UDroneControlPdu::Run_Implementation()
 		PrevStates = CurrStates;
 		hako::pdu::PduConvertor<HakoCpp_GameControllerOperation, hako::pdu::msgs::hako_msgs::GameControllerOperation> Conv;
 		Conv.pdu2cpp((char*)Buffer.GetData(), CurrStates);
+		//UE_LOG(LogTemp, Log, TEXT("%d %d %d %d"), CurrStates.button[0], CurrStates.button[1], CurrStates.button[2], CurrStates.button[3]);
 	}
 }
 
