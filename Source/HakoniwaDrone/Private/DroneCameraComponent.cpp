@@ -90,8 +90,8 @@ void UDroneCameraComponent::Initialize()
     // 初期値
     ManualRotationDeg = 0.0f;
     MoveStep = 1.0f;
-    CameraMoveUpDeg = -15.0f;
-    CameraMoveDownDeg = 90.0f;
+    CameraMoveUpDeg = 90.0f;
+    CameraMoveDownDeg = -90.0f;
     // 使用するPDU名の定義（固定）
     PduCmdCamera = TEXT("hako_cmd_camera");
     PduCmdCameraMove = TEXT("hako_cmd_camera_move");
@@ -104,12 +104,13 @@ void UDroneCameraComponent::Initialize()
 
 void UDroneCameraComponent::UpdateCameraAngle()
 {
-    if (!SceneCapture) return;
-
+    //if (!SceneCapture) return;
+    UE_LOG(LogTemp, Log, TEXT("UpdateCameraAngle: %f"), ManualRotationDeg);
     // Pitch だけをマニュアル制御、他の軸は固定
     FRotator NewRotation = SceneCapture->GetRelativeRotation();
     NewRotation.Pitch = ManualRotationDeg;
-    SceneCapture->SetRelativeRotation(NewRotation);
+    //SceneCapture->SetRelativeRotation(NewRotation);
+    SetRelativeRotation(NewRotation);
 }
 bool UDroneCameraComponent::DeclarePdu(const FString& InRobotName, UPduManager* PduManager)
 {
@@ -317,7 +318,8 @@ void UDroneCameraComponent::SetCameraAngle(float Angle)
     float NewPitch = Angle;
 
     if (NewPitch > 180.0f) NewPitch -= 360.0f;
-    ManualRotationDeg = FMath::Clamp(NewPitch, CameraMoveUpDeg, CameraMoveDownDeg);
+    ManualRotationDeg = FMath::Clamp(NewPitch, CameraMoveDownDeg, CameraMoveUpDeg);
+    UE_LOG(LogTemp, Log, TEXT("RotationDeg: %f"), ManualRotationDeg);
 }
 
 void UDroneCameraComponent::UpdateCameraImageTexture()

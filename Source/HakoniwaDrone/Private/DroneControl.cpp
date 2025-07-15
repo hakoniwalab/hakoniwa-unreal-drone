@@ -82,35 +82,15 @@ void UDroneControl::HandleCameraControl(float DeltaTime)
     }
     if (IDroneControlOp::Execute_IsUpButtonPressed(ControlOp.GetObject()))
     {
+        UE_LOG(LogTemp, Log, TEXT("Up Pressed"));
         is_pressed_up = true;
     }
     else if (IDroneControlOp::Execute_IsUpButtonReleased(ControlOp.GetObject()))
     {
+        UE_LOG(LogTemp, Log, TEXT("Up Released"));
         is_pressed_up = false;
     }
     if (is_pressed_up)
-    {
-        camera_move_button_time_duration += DeltaTime;
-        if (camera_move_button_time_duration > camera_move_button_threshold_speedup)
-        {
-            CameraController->RotateCamera(-move_step * 3.0);
-        }
-        else
-        {
-            CameraController->RotateCamera(-move_step);
-        }
-
-    }
-    if (IDroneControlOp::Execute_IsDownButtonPressed(ControlOp.GetObject()))
-    {
-        is_pressed_down = true;
-    }
-    else if (IDroneControlOp::Execute_IsDownButtonReleased(ControlOp.GetObject()))
-    {
-        is_pressed_down = false;
-    }
-
-    if (is_pressed_down)
     {
         camera_move_button_time_duration += DeltaTime;
         if (camera_move_button_time_duration > camera_move_button_threshold_speedup)
@@ -121,6 +101,31 @@ void UDroneControl::HandleCameraControl(float DeltaTime)
         {
             CameraController->RotateCamera(move_step);
         }
+        CameraController->UpdateCameraAngle();
+    }
+    if (IDroneControlOp::Execute_IsDownButtonPressed(ControlOp.GetObject()))
+    {
+        UE_LOG(LogTemp, Log, TEXT("Down Pressed"));
+        is_pressed_down = true;
+    }
+    else if (IDroneControlOp::Execute_IsDownButtonReleased(ControlOp.GetObject()))
+    {
+        UE_LOG(LogTemp, Log, TEXT("Down Released"));
+        is_pressed_down = false;
+    }
+
+    if (is_pressed_down)
+    {
+        camera_move_button_time_duration += DeltaTime;
+        if (camera_move_button_time_duration > camera_move_button_threshold_speedup)
+        {
+            CameraController->RotateCamera(-move_step * 3.0);
+        }
+        else
+        {
+            CameraController->RotateCamera(-move_step);
+        }
+        CameraController->UpdateCameraAngle();
     }
 
     if (!is_pressed_down && !is_pressed_up)
