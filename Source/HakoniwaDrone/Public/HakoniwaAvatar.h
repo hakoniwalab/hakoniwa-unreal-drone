@@ -7,6 +7,7 @@
 #include "DronePropellerComponent.h"
 #include "DroneLedComponent.h"
 #include "FlightModeLedComponent.h"
+#include "DroneCollisionComponent.h"
 #include "PduManager.h"
 
 #include "HakoniwaAvatar.generated.h"
@@ -41,6 +42,8 @@ private:
 	UDroneLedComponent* DroneState = nullptr;
 	UPROPERTY()
 	UFlightModeLedComponent* FlightMode = nullptr;
+	UPROPERTY()
+	UDroneCollisionComponent* Collision = nullptr;
 	void DeclarePdu();
 	void DoTask();
 	TArray<uint8> Read(const FString& PduName);

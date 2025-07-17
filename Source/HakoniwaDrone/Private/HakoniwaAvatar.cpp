@@ -7,6 +7,7 @@
 #include "hako_mavlink_msgs/pdu_cpptype_conv_HakoHilActuatorControls.hpp"
 #include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
 #include "hako_msgs/pdu_cpptype_conv_DroneStatus.hpp"
+#include "hako_msgs/pdu_cpptype_conv_ImpulseCollision.hpp"
 #include "pdu_convertor.hpp"
 #include <Kismet/GameplayStatics.h>
 
@@ -51,6 +52,12 @@ void AHakoniwaAvatar::DeclarePdu()
             }
             else {
                 UE_LOG(LogTemp, Warning, TEXT("Failed to declare %s:status"), *DroneName);
+            }
+            if (pduManager->DeclarePduForWrite(DroneName, "impulse")) {
+                UE_LOG(LogTemp, Log, TEXT("Successfully declared %s:impulse"), *DroneName);
+            }
+            else {
+                UE_LOG(LogTemp, Warning, TEXT("Failed to declare %s:impulse"), *DroneName);
             }
             isDeclared = true;
         }
@@ -147,6 +154,44 @@ void AHakoniwaAvatar::DoTask()
     else if (is_motor_activated == false) {
         DroneState->SetMode(EDroneMode::DISARM);
     }
+    if (Collision) {
+        FDroneImpulseCollision impulse = Collision->GetAndResetCollision();
+        if (impulse.bCollision) {
+            HakoCpp_ImpulseCollision pdu_impulse;
+            int32 PduSize = pduManager->GetPduSize(DroneName, "impulse");
+            if (PduSize <= 0) {
+                UE_LOG(LogTemp, Error, TEXT("impulse: Failed to get PDU size"));
+                return;
+            }
+            TArray<uint8> wBuffer;
+            wBuffer.SetNum(PduSize);
+
+            pdu_impulse.collision = true;
+            pdu_impulse.is_target_static = impulse.bIsTargetStatic;
+            pdu_impulse.restitution_coefficient = impulse.RestitutionCoefficient;
+
+            pdu_impulse.normal = { impulse.Normal.X, impulse.Normal.Y, impulse.Normal.Z };
+            pdu_impulse.self_contact_vector = { impulse.SelfContactVector.X, impulse.SelfContactVector.Y, impulse.SelfContactVector.Z };
+            pdu_impulse.target_contact_vector = { impulse.TargetContactVector.X, impulse.TargetContactVector.Y, impulse.TargetContactVector.Z };
+
+            pdu_impulse.target_velocity = { impulse.TargetVelocity.X, impulse.TargetVelocity.Y, impulse.TargetVelocity.Z };
+            pdu_impulse.target_angular_velocity = { impulse.TargetAngularVelocity.X, impulse.TargetAngularVelocity.Y, impulse.TargetAngularVelocity.Z };
+            pdu_impulse.target_euler = { impulse.TargetEuler.X, impulse.TargetEuler.Y, impulse.TargetEuler.Z };
+            pdu_impulse.target_inertia = { impulse.TargetInertia.X, impulse.TargetInertia.Y, impulse.TargetInertia.Z };
+
+            pdu_impulse.target_mass = impulse.TargetMass;
+
+            hako::pdu::PduConvertor<HakoCpp_ImpulseCollision, hako::pdu::msgs::hako_msgs::ImpulseCollision> Conv;
+            Conv.cpp2pdu(pdu_impulse, (char*)wBuffer.GetData(), wBuffer.Num());
+
+            if (!pduManager->FlushPduRawData(DroneName, "impulse", wBuffer)) {
+                UE_LOG(LogTemp, Error, TEXT("impulse: Failed to flush PDU"));
+            }
+            else {
+                UE_LOG(LogTemp, Log, TEXT("impulse: PDU sent successfully. Size = %d"), wBuffer.Num());
+            }
+        }
+    }
 }
 TArray<uint8> AHakoniwaAvatar::Read(const FString& PduName)
 {
@@ -179,6 +224,14 @@ void AHakoniwaAvatar::BeginPlay()
         if (!Motor)
         {
             UE_LOG(LogTemp, Error, TEXT("DronePropellerComponent not found!"));
+        }
+    }
+    if (!Collision)
+    {
+        Collision = FindComponentByClass<UDroneCollisionComponent>();
+        if (!Collision)
+        {
+            UE_LOG(LogTemp, Error, TEXT("UDroneCollisionComponent not found!"));
         }
     }
     if (!DroneState)

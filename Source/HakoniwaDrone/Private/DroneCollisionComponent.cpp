@@ -1,4 +1,4 @@
-#include "DroneCollisionComponent.h"
+ï»¿#include "DroneCollisionComponent.h"
 #include "Components/BoxComponent.h"
 
 UDroneCollisionComponent::UDroneCollisionComponent()
@@ -39,15 +39,29 @@ void UDroneCollisionComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedCom
     bool bFromSweep, const FHitResult& SweepResult)
 {
     if (!OtherActor || !OtherComp) return;
-    UE_LOG(LogTemp, Warning, TEXT("Overlap Detected!% s"), *OtherActor->GetName());
+    UE_LOG(LogTemp, Warning, TEXT("Overlap Detected! %s"), *OtherActor->GetName());
 
-    FVector ContactPoint = SweepResult.ImpactPoint;
     FVector SelfPos = GetComponentLocation();
-    FVector SelfContactVector = ContactPoint - SelfPos;
     FVector TargetPos = OtherComp->GetComponentLocation();
+
+    // ContactPointã‚’å®‰å…¨ã«å–å¾—ã™ã‚‹
+    FVector ContactPoint;
+    float Distance = OtherComp->GetClosestPointOnCollision(SelfPos, ContactPoint);
+
+
+    if (Distance < 0.0f)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("GetClosestPointOnCollision failed, fallback to TargetPos"));
+        ContactPoint = TargetPos;
+    }
+
+    FVector SelfContactVector = ContactPoint - SelfPos;
     FVector TargetContactVector = ContactPoint - TargetPos;
 
-    float Epsilon = 0.0001f;
+    UE_LOG(LogTemp, Log, TEXT("SelfPos: %s, TargetPos: %s, ContactPoint: %s"), *SelfPos.ToString(), *TargetPos.ToString(), *ContactPoint.ToString());
+    UE_LOG(LogTemp, Log, TEXT("SelfContactVector: %s, TargetContactVector: %s"), *SelfContactVector.ToString(), *TargetContactVector.ToString());
+
+    float Epsilon = 0.000001f;
     if (SelfContactVector.SizeSquared() < Epsilon * Epsilon)
     {
         UE_LOG(LogTemp, Warning, TEXT("Collision vector too small"));
@@ -57,20 +71,20 @@ void UDroneCollisionComponent::OnOverlapBegin(UPrimitiveComponent* OverlappedCom
     CollisionInfo.bCollision = true;
     CollisionInfo.bIsTargetStatic = true;
 
-    // Ã“I•¨‘Ì‚Ì‚½‚ß‘¬“x‚È‚Ç‚Í0
     CollisionInfo.TargetVelocity = ConvertToRosVector(FVector::ZeroVector);
     CollisionInfo.TargetAngularVelocity = ConvertToRosAngular(FVector::ZeroVector);
     CollisionInfo.TargetEuler = ConvertToRosAngular(FVector::ZeroVector);
 
     CollisionInfo.SelfContactVector = ConvertToRosVector(SelfContactVector);
     CollisionInfo.TargetContactVector = ConvertToRosVector(TargetContactVector);
-    CollisionInfo.TargetInertia = FVector::OneVector;
-    CollisionInfo.Normal = ConvertToRosVector(-SelfContactVector.GetSafeNormal());
+    CollisionInfo.TargetInertia = FVector(1, 1, 1);
+    CollisionInfo.Normal = FVector::ZeroVector;  // Normalè¨ˆç®—ã¯åˆ¥é€”å¯¾å¿œï¼Ÿ
     CollisionInfo.TargetMass = 1.0;
-    CollisionInfo.RestitutionCoefficient = 0.5;
+    CollisionInfo.RestitutionCoefficient = 1.0;
 
     UE_LOG(LogTemp, Log, TEXT("Collision! ROS vector: %s"), *CollisionInfo.SelfContactVector.ToString());
 }
+
 
 FDroneImpulseCollision UDroneCollisionComponent::GetAndResetCollision()
 {
@@ -81,21 +95,19 @@ FDroneImpulseCollision UDroneCollisionComponent::GetAndResetCollision()
 
 FVector UDroneCollisionComponent::ConvertToRosVector(const FVector& UnrealVec) const
 {
-    // Unreal (X:‰E, Y:‘O, Z:ã) ¨ ROS (X:‘O, Y:¶, Z:ã)
     return FVector(
-        -UnrealVec.Y,  // ROS.X © Unreal.Y
-        UnrealVec.X,  // ROS.Y © Unreal.Xi‰E¨¶j
-        UnrealVec.Z   // ROS.Z © Unreal.Ziãj
+        UnrealVec.X * 0.01f,
+        -UnrealVec.Y * 0.01f,
+        UnrealVec.Z * 0.01f
     );
 }
 
 
 FVector UDroneCollisionComponent::ConvertToRosAngular(const FVector& UnrealVec) const
 {
-    // Unreal (¶ŽèŒn) ¨ ROS (‰EŽèŒn) ‚É•ÏŠ·{‰ñ“]•ûŒü”½“]
     return FVector(
-        UnrealVec.Y,   // ROS.X © Unreal.Y
-        -UnrealVec.X,   // ROS.Y © Unreal.X
-        -UnrealVec.Z    // ROS.Z © Unreal.Z
+        -UnrealVec.X,
+        UnrealVec.Y,
+        -UnrealVec.Z
     );
 }
