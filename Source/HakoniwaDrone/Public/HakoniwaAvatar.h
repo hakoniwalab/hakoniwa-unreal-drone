@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "DronePropellerComponent.h"
+#include "DroneLedComponent.h"
 #include "PduManager.h"
 
 #include "HakoniwaAvatar.generated.h"
@@ -30,11 +31,16 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	UPduManager* GetPduManager() { return pduManager; }
 private:
-	UPduManager* pduManager = nullptr;
 	bool isDeclared = false;
+	UPROPERTY()
+	UPduManager* pduManager = nullptr;
+	UPROPERTY()
 	UDronePropellerComponent* Motor = nullptr;
+	UPROPERTY()
+	UDroneLedComponent* DroneState = nullptr;
 	void DeclarePdu();
 	void DoTask();
 	TArray<uint8> Read(const FString& PduName);
+	bool is_motor_activated = false;
 
 };

@@ -6,6 +6,7 @@
 #include "geometry_msgs/pdu_cpptype_conv_Twist.hpp"
 #include "hako_mavlink_msgs/pdu_cpptype_conv_HakoHilActuatorControls.hpp"
 #include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
+#include "hako_msgs/pdu_cpptype_conv_DroneStatus.hpp"
 #include "pdu_convertor.hpp"
 #include <Kismet/GameplayStatics.h>
 
@@ -44,6 +45,12 @@ void AHakoniwaAvatar::DeclarePdu()
             }
             else {
                 UE_LOG(LogTemp, Warning, TEXT("Failed to declare %s:pos"), *DroneName);
+            }
+            if (pduManager->DeclarePduForRead(DroneName, "status")) {
+                UE_LOG(LogTemp, Log, TEXT("Successfully declared %s:status"), *DroneName);
+            }
+            else {
+                UE_LOG(LogTemp, Warning, TEXT("Failed to declare %s:status"), *DroneName);
             }
             isDeclared = true;
         }
@@ -107,6 +114,30 @@ void AHakoniwaAvatar::DoTask()
                 motor.controls[3]
             );
         }
+        is_motor_activated = motor.controls[0] > 0.001;
+    }
+    buffer = Read("status");
+    if (is_motor_activated && buffer.Num() > 0) {
+        HakoCpp_DroneStatus status;
+        hako::pdu::PduConvertor<HakoCpp_DroneStatus, hako::pdu::msgs::hako_msgs::DroneStatus> conv;
+        conv.pdu2cpp((char*)buffer.GetData(), status);
+        switch (status.internal_state)
+        {
+        case 0:
+            DroneState->SetMode(EDroneMode::TAKEOFF);
+            break;
+        case 1:
+            DroneState->SetMode(EDroneMode::HOVER);
+            break;
+        case 2:
+            DroneState->SetMode(EDroneMode::LANDING);
+            break;
+        default:
+            break;
+        }
+    }
+    else if (is_motor_activated == false) {
+        DroneState->SetMode(EDroneMode::DISARM);
     }
 }
 TArray<uint8> AHakoniwaAvatar::Read(const FString& PduName)
@@ -140,6 +171,14 @@ void AHakoniwaAvatar::BeginPlay()
         if (!Motor)
         {
             UE_LOG(LogTemp, Error, TEXT("DronePropellerComponent not found!"));
+        }
+    }
+    if (!DroneState)
+    {
+        DroneState = FindComponentByClass<UDroneLedComponent>();
+        if (!DroneState)
+        {
+            UE_LOG(LogTemp, Error, TEXT("UDroneLedComponent not found!"));
         }
     }
 }
