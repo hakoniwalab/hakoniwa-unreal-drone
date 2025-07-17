@@ -117,10 +117,18 @@ void AHakoniwaAvatar::DoTask()
         is_motor_activated = motor.controls[0] > 0.001;
     }
     buffer = Read("status");
-    if (is_motor_activated && buffer.Num() > 0) {
-        HakoCpp_DroneStatus status;
+    HakoCpp_DroneStatus status;
+    if (buffer.Num() > 0) {
         hako::pdu::PduConvertor<HakoCpp_DroneStatus, hako::pdu::msgs::hako_msgs::DroneStatus> conv;
         conv.pdu2cpp((char*)buffer.GetData(), status);
+        if (status.flight_mode == 0) {
+            FlightMode->SetMode(EFlightMode::ATTI);
+        }
+        else {
+            FlightMode->SetMode(EFlightMode::GPS);
+        }
+    }
+    if (is_motor_activated && buffer.Num() > 0) {
         switch (status.internal_state)
         {
         case 0:
@@ -179,6 +187,14 @@ void AHakoniwaAvatar::BeginPlay()
         if (!DroneState)
         {
             UE_LOG(LogTemp, Error, TEXT("UDroneLedComponent not found!"));
+        }
+    }
+    if (!FlightMode)
+    {
+        FlightMode = FindComponentByClass<UFlightModeLedComponent>();
+        if (!FlightMode)
+        {
+            UE_LOG(LogTemp, Error, TEXT("UFlightModeLedComponent not found!"));
         }
     }
 }

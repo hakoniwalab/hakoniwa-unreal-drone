@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "DronePropellerComponent.h"
 #include "DroneLedComponent.h"
+#include "FlightModeLedComponent.h"
 #include "PduManager.h"
 
 #include "HakoniwaAvatar.generated.h"
@@ -38,6 +39,8 @@ private:
 	UDronePropellerComponent* Motor = nullptr;
 	UPROPERTY()
 	UDroneLedComponent* DroneState = nullptr;
+	UPROPERTY()
+	UFlightModeLedComponent* FlightMode = nullptr;
 	void DeclarePdu();
 	void DoTask();
 	TArray<uint8> Read(const FString& PduName);
