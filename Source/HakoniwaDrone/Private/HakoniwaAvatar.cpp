@@ -76,29 +76,32 @@ void AHakoniwaAvatar::DoTask()
         FVector NewLocation(pos.linear.x * 100.0f, -pos.linear.y * 100.0f, pos.linear.z * 100.0f);
 
         FRotator NewRotation = FRotator(
-            -FMath::RadiansToDegrees(pos.angular.y),   // Pitch ← ROSのPitch（Y軸）→ 符号反転
-            -FMath::RadiansToDegrees(pos.angular.z),   // Yaw   ← ROSのYaw（Z軸） → 符号反転
-            FMath::RadiansToDegrees(pos.angular.x)     // Roll  ← ROSのRoll（X軸）→ そのまま
+            -FMath::RadiansToDegrees(pos.angular.y),   // Pitch 
+            -FMath::RadiansToDegrees(pos.angular.z),   // Yaw   
+            FMath::RadiansToDegrees(pos.angular.x)     // Roll  
         );
 
         if (FMath::IsFinite(NewLocation.X) && FMath::IsFinite(NewLocation.Y) && FMath::IsFinite(NewLocation.Z)) {
             AActor* ParentActor = this;
             if (ParentActor && IsValid(ParentActor))
             {
+                const float MaxSpeedCmPerSec = 2000.f;
                 FVector CurrentLocation = ParentActor->GetActorLocation();
                 FRotator CurrentRotation = ParentActor->GetActorRotation();
                 FVector CurrentScale = ParentActor->GetActorScale3D();
-                // 急激な変更を避ける
-                float MaxDistance = 1000.0f; // 1フレームでの最大移動距離
-                if (FVector::Dist(CurrentLocation, NewLocation) > MaxDistance)
+                FVector Target = NewLocation * 100.0f;
+                const float MaxDelta = MaxSpeedCmPerSec * GetWorld()->GetDeltaSeconds();
+                const float Jump = FVector::Dist(CurrentLocation, Target);
+                if (Jump > MaxDelta * 5.0f)
                 {
-                    UE_LOG(LogTemp, Warning, TEXT("Position change too large, skipping update"));
+                    UE_LOG(LogTemp, Warning, TEXT("Large jump (%.1f cm) -> teleport"), Jump);
+                    const FTransform NewTransform(CurrentRotation, Target, CurrentScale);
+                    ParentActor->SetActorTransform(NewTransform, /*bSweep=*/false, /*OutHit=*/nullptr, ETeleportType::TeleportPhysics);
                     return;
                 }
-
-                // SetActorTransform を使用（より安全）
-                FTransform NewTransform(NewRotation, NewLocation, CurrentScale);
-                ParentActor->SetActorTransform(NewTransform, false, nullptr, ETeleportType::TeleportPhysics);
+                
+                const FTransform NewTransform(CurrentRotation, Target, CurrentScale);
+                ParentActor->SetActorTransform(NewTransform, /*bSweep=*/false, /*OutHit=*/nullptr, ETeleportType::None);
             }
         }
         else {
