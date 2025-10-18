@@ -88,6 +88,7 @@ void AHakoniwaAvatar::DoTask()
                 FVector CurrentLocation = ParentActor->GetActorLocation();
                 FRotator CurrentRotation = ParentActor->GetActorRotation();
                 FVector CurrentScale = ParentActor->GetActorScale3D();
+                #if 0
                 // 急激な変更を避ける
                 float MaxDistance = 1000.0f; // 1フレームでの最大移動距離
                 if (FVector::Dist(CurrentLocation, NewLocation) > MaxDistance)
@@ -95,6 +96,7 @@ void AHakoniwaAvatar::DoTask()
                     UE_LOG(LogTemp, Warning, TEXT("Position change too large, skipping update"));
                     return;
                 }
+                #endif
 
                 // SetActorTransform を使用（より安全）
                 FTransform NewTransform(NewRotation, NewLocation, CurrentScale);
