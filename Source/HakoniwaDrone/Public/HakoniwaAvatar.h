@@ -9,6 +9,9 @@
 #include "FlightModeLedComponent.h"
 #include "DroneCollisionComponent.h"
 #include "PduManager.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "Kismet/KismetRenderingLibrary.h"
+#include "Components/SceneCaptureComponent2D.h"
 
 #include "HakoniwaAvatar.generated.h"
 
@@ -23,6 +26,14 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hakoniwa")
 	FString DroneName = "Drone";
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	USceneCaptureComponent2D* PiPCapture = nullptr;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
+	UTextureRenderTarget2D* RT_PiP = nullptr;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Camera")
+	UTextureRenderTarget2D* GetPiPRenderTarget() const { return RT_PiP; }
 
 protected:
 	// Called when the game starts or when spawned

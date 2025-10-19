@@ -252,6 +252,50 @@ void AHakoniwaAvatar::BeginPlay()
             UE_LOG(LogTemp, Error, TEXT("UFlightModeLedComponent not found!"));
         }
     }
+
+
+    if (!PiPCapture)
+    {
+        PiPCapture = FindComponentByClass<USceneCaptureComponent2D>();
+        if (!PiPCapture)
+        {
+            UE_LOG(LogTemp, Error, TEXT("[%s] SceneCaptureComponent2D not found!"),
+                *GetName());
+        }
+    }
+
+    if (!RT_PiP)
+    {
+        RT_PiP = UKismetRenderingLibrary::CreateRenderTarget2D(
+            this,            // Outer
+            1280, 720,
+            RTF_RGBA8
+        );
+        if (!RT_PiP)
+        {
+            UE_LOG(LogTemp, Error, TEXT("[%s] Failed to create RenderTarget"), *GetName());
+        }
+    }
+
+    if (PiPCapture && RT_PiP)
+    {
+        PiPCapture->TextureTarget = RT_PiP;
+        PiPCapture->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
+        PiPCapture->FOVAngle = 80.f;
+        PiPCapture->bCaptureEveryFrame = true;    
+        PiPCapture->bCaptureOnMovement = true;
+
+        // for light processing
+        // PiPCapture->ShowFlags.MotionBlur = 0;
+        // PiPCapture->ShowFlags.AmbientOcclusion = 0;
+        // PiPCapture->ShowFlags.Bloom = 0;
+        // PiPCapture->ShowFlags.DynamicShadows = 0;
+
+        UE_LOG(LogTemp, Log, TEXT("[%s] PiP ready: %dx%d on %s"),
+            *GetName(),
+            RT_PiP->SizeX, RT_PiP->SizeY,
+            *PiPCapture->GetName());
+    }
 }
 
 // Called every frame
